@@ -1,0 +1,18 @@
+{
+  "name": "quizcloud",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A buildless, browser-local trivia game.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check dist/app.js && node --check dist/game.js && node --check dist/questions.js && node --check server.js && node --check tests/game.test.js && node --check tests/browser.cjs",
+    "test": "node --test tests/game.test.js",
+    "test:browser": "node tests/browser.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
+}

@@ -1,0 +1,66 @@
+# Dependencies and generated test output
+node_modules/
+artifacts/
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+.cache/
+tmp/
+temp/
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+
+# Local environments, secrets, credentials, and private keys
+.env
+.env.*
+!.env.example
+!.env.*.example
+.aws/
+.ssh/
+.config/gh/
+.npmrc
+.netrc
+_netrc
+credentials
+credentials.*
+*credentials*.json
+*credentials*.csv
+*credentials*.ini
+service-account*.json
+secrets/
+secrets.*
+*.secret
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+id_rsa*
+id_ed25519*
+
+# Future infrastructure state and local deployment output
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+*.tfplan
+cdk.out/
+.aws-sam/
+
+# Editor, OS, and machine-specific settings
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini
+.codex/
+.agents/
+
+# dist/ contains hand-authored application source: intentionally publish it.
