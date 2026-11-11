@@ -1,114 +1,102 @@
 # QuizCloud
 
-A responsive trivia game and cloud engineering portfolio project built with HTML, CSS, and vanilla JavaScript. The application is complete and tested locally. AWS hosting is planned; this version provisions no cloud resources.
+A trivia application built as a cloud engineering portfolio project. The frontend is served through Amazon CloudFront from a private S3 bucket. An API Gateway HTTP API, Python Lambda function, and DynamoDB table provide an optional public-beta leaderboard.
+
+**[Live application](https://d17wyxi8cpi412.cloudfront.net)** · **[GitHub repository](https://github.com/Emmanuel2005-creator/QuizCloud)**
 
 ## Features
 
-- Sports, Technology, Geography, and Movies categories.
-- 80 questions, with 10 unique questions randomly selected per game and independently shuffled answer choices.
-- A 20-second countdown per question, including while the tab is in the background.
-- Progress tracking, 100 points per correct answer, and a maximum score of 1,000.
-- Locked answers, feedback, and explanations for correct, incorrect, and expired answers.
-- Results, accuracy, answer review, Play Again, and category navigation.
-- Per-category personal bests saved with localStorage and an in-memory fallback when storage is blocked.
-- Responsive layouts, keyboard support, visible focus, live feedback, and reduced-motion styles.
-- Offline gameplay with no account, API key, backend, remote fonts, or production dependencies.
+- Sports, Technology, Geography, and Movies: 80 questions with 10 unique questions selected per game.
+- Randomized question order and answer choices, with a 20-second timer per question.
+- Scoring, immediate feedback, results, answer review, and Play Again.
+- Per-category personal bests stored in the browser using localStorage.
+- Category rankings from the AWS API and optional public nickname/score submission.
+- Responsive layouts and keyboard support. API failures leave the quiz and local bests usable.
 
-## Run locally
+The leaderboard is a beta: scores and browser-generated player IDs are not independently verified.
 
-**Without installing anything:** open `dist/index.html` in a modern browser. All application assets and questions are local.
+## Technologies and architecture
 
-**Recommended for consistent saved scores:** install Node.js 22 or later, open a terminal in this project folder, and run:
+HTML, CSS, and vanilla JavaScript; Python 3.12 and boto3; Amazon S3, CloudFront, API Gateway, Lambda, and DynamoDB. Tests use Node.js, Playwright/Chrome, and Python unittest.
 
-```sh
-node server.js
+```mermaid
+flowchart LR
+    Browser -->|HTTPS assets| CloudFront --> S3[Private S3 bucket]
+    Browser -->|GET rankings / POST score| API[API Gateway HTTP API]
+    API -->|invokes| Lambda[Lambda: Python 3.12]
+    Lambda -->|Execution role and TABLE_NAME| DynamoDB
 ```
 
-Open **http://127.0.0.1:8000**. Stop with **Ctrl+C**. The server binds only to this computer's loopback interface and serves only `dist/`. No package installation is needed to run the app or unit tests. Recorded verification used Node.js 24.19.0.
+API Gateway invokes Lambda. Lambda uses its execution role for AWS permissions and `TABLE_NAME=QuizCloudLeaderBoard` to select the table. The table uses partition key `PlayerId` and sort key `category`. See [the architecture and resource inventory](docs/ARCHITECTURE.md).
 
-Alternatively, with Python 3 installed:
+## Local setup
+
+Install Node.js 22 or later, then run from the project folder:
 
 ```sh
-python -m http.server 8000 --bind 127.0.0.1 --directory dist
+npm start
 ```
 
-On Windows, `py` can replace `python`.
+Open **http://127.0.0.1:8000**. Stop the preview with Ctrl+C. No package installation is needed to run the game. Alternatively, open `dist/index.html` directly; browser storage behavior for file URLs varies.
 
-Use the same browser and address each time. Scores are scoped to the origin: `localhost`, `127.0.0.1`, different ports, and directly opened files can have separate storage. Persistence on `file:` pages varies by browser. Private browsing or clearing site data may remove scores. If storage is blocked, a notice appears and bests last for the current tab only.
+The core quiz works offline. Rankings require network access and an API-allowed origin. The live CloudFront origin is allowed; localhost may be blocked by CORS. Use the mocked suite for local API UI tests rather than disabling browser protections.
 
-## Play and test manually
+Personal bests are specific to the browser and origin. Refreshing discards an unfinished round; bests save when results open. A nickname and browser player ID are sent only when a player chooses Submit score. Avoid personal information in public nicknames.
 
-1. Pick a category and answer ten questions. Verify four choices per question and progress updates.
-2. Answer correctly and incorrectly; check that only correct answers add 100 points and a question cannot score twice.
-3. Let a timer expire and check the explanation. Switching tabs does not pause the deadline; Next starts a fresh timer.
-4. Finish and select **See my results**. Verify score, accuracy, and the expandable answer review.
-5. Select **Play again**. Verify a fresh round, zero current score, and reset progress. Randomization can legitimately repeat questions between games.
-6. Return home and reload. Check that bests persist separately and never decrease. Bests save when the results page opens.
-7. Resize to phone width and play with Tab, Shift+Tab, Enter, and Space.
+## Tests
 
-The logo and **Back to categories** leave an unfinished round. Refreshing resets the current session; incomplete rounds do not save a new best.
-
-## Automated tests
-
-Run syntax checks and Node built-in unit tests without installing packages:
+Syntax and game-unit checks require only Node.js:
 
 ```sh
 npm run check
 npm test
 ```
 
-Or run the unit tests directly: `node --test tests/game.test.js`.
-
-For browser tests, install the locked development dependency and ensure **Google Chrome** is installed:
-
-```sh
-npm ci
-```
-
-Start `node server.js` in one terminal. In another terminal in the project folder:
+For UI tests, install the pinned development dependency with `npm ci`, install Google Chrome, and start `npm start` in another terminal:
 
 ```sh
 npm run test:browser
 ```
 
-The suite uses Playwright with the installed Chrome channel; no separate Playwright browser download is required. It uses isolated contexts rather than a personal Chrome profile. Screenshots are generated in `artifacts/`, which is excluded from Git. `QUIZCLOUD_URL` can override the preview address.
+This runs the original gameplay suite and nine leaderboard checks. Leaderboard requests, including submissions, are intercepted: no production scores are created. Generated screenshots stay in ignored `artifacts/`.
 
-Unit tests cover question data, seeded randomization, answer mapping, scoring, deadlines, background expiration, round completion, and storage validation/fallback. Browser tests cover complete games, timeouts, saved bests, replay, review, keyboard focus, mobile overflow, corrupt/blocked storage, and direct-file opening. See [CHECKS.md](CHECKS.md) for actual results and limitations.
+With Python 3.12, test the supplied Lambda source using SDK/table doubles:
 
-## Architecture
-
-```text
-QuizCloud/
-  dist/                     Hand-authored application source; no build step
-    index.html              Home, quiz, and results views; inline SVG icons
-    styles.css              Responsive layout and visual design
-    questions.js            80 questions and category metadata
-    game.js                 Randomization, game state, timing, personal bests
-    app.js                  DOM rendering, navigation, timer events, feedback
-  tests/
-    game.test.js            Node built-in unit tests
-    browser.cjs             Playwright/Chrome interaction and layout checks
-  docs/
-    AWS_PLAN.md             Future deployment design; no deployed resources
-    GITHUB_PREPARATION.md    Proposed publication manifest and approval boundary
-  server.js                 Optional localhost preview server
-  package.json              Commands and development-only Playwright dependency
-  package-lock.json         Reproducible development dependency versions
-  CHECKS.md                 Recorded verification
+```sh
+python -m unittest discover -s tests -p "test_backend.py" -v
 ```
 
-The UI follows home -> question -> feedback -> results. The engine owns scoring and locks submitted answers. A wall-clock deadline handles delayed callbacks and background tabs. Fisher-Yates shuffling samples without replacement and randomizes choices. The versioned `quizcloud.personal-bests.v1` localStorage key stores validated scores per category. Scores are browser-local and user-editable; this is not a trusted competitive leaderboard.
+These backend tests require no installed boto3, credentials, or AWS access. To explicitly run read-only CloudFront/API integration checks:
 
-`dist/` contains original source despite its name: include it in Git. Its contents are the only files needed for future static hosting. The preview server, tests, dependency files, and documentation do not belong in the hosting bucket.
+```sh
+npm run test:live
+```
 
-## Future AWS deployment
+The live script blocks API writes, reads rankings in all categories, plays local-browser quiz rounds, and compares deployed assets with `dist/`. See [CHECKS.md](CHECKS.md) for actual results and test boundaries.
 
-The planned architecture is **browser -> HTTPS CloudFront -> private S3 bucket** with Origin Access Control. A custom domain can optionally use Route 53 and ACM. Future GitHub Actions deployment should use OIDC and a narrowly scoped IAM role rather than stored AWS access keys. See [the AWS plan](docs/AWS_PLAN.md) for caching, verification, rollback, and teardown.
+## Repository layout
 
-Deployment is a future phase requiring separate approval. No AWS commands, deployment workflows, credentials, account identifiers, or infrastructure state are included. The plan follows [AWS private S3 origin guidance](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html) and [GitHub AWS OIDC guidance](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws).
+```text
+backend/   Supplied Lambda console source, provenance, and behavior notes
+dist/      Complete static frontend; no build step
+tests/     Game units, browser UI checks, backend units, and read-only live checks
+docs/      Existing AWS architecture, deployment notes, and beta limitations
+```
 
-## Repository hygiene and limitations
+`dist/` is hand-authored application source and is intentionally tracked. `server.js` is a localhost preview server, not part of the AWS deployment. There are no production npm dependencies.
 
-`.gitignore` excludes dependencies, screenshots, logs, temporary/editor files, environments, credentials, private keys, and future infrastructure state. `.gitattributes` normalizes text for Windows/Linux collaboration. Review staged files before every push. Never place secrets in frontend assets, which are visible to visitors once hosted.
+## Deployment and source backup
 
-Chrome was tested automatically. Firefox, Safari, physical devices, and a formal accessibility audit remain future checks. The local starter question bank should receive an editorial review before public launch. No license has been chosen; no open-source license grant is included.
+The frontend and leaderboard API are already deployed. GitHub merges do **not** update S3 or Lambda automatically. All seven live frontend files matched this branch during the final review; no frontend upload or invalidation was needed. [Deployment notes](docs/DEPLOYMENT.md) explain the existing release boundary and manual update procedure.
+
+[backend/lambda_function.py](backend/lambda_function.py) preserves the Python supplied by the owner from the Lambda console. It was not rewritten or redeployed. Local AWS credentials were unavailable, so its identity with the deployed package was **not independently verified**. [Backend notes](backend/README.md) record provenance and the verification step still available to the owner.
+
+## Known limitations
+
+- Public scores and browser IDs can be forged. Frontend validation is not authentication or proof of quiz completion.
+- The supplied Lambda uses one filtered DynamoDB Scan page; rankings can be incomplete as the table grows. Unexpected database errors propagate, while the frontend handles API failure.
+- The actual IAM policies, table configuration, throttling, and bucket policy were not audited without AWS credentials. Do not infer least privilege from working requests.
+- Live ranking reads and CORS preflight were verified; no production POST was sent. Live score acceptance/persistence still needs an explicitly approved test record.
+- Automated browser coverage uses Chrome, not Safari, Firefox, or physical devices. No formal accessibility audit was performed.
+
+[Security and reliability notes](docs/LEADERBOARD_BETA.md) distinguish implemented protections from unresolved backend work. No authentication, new AWS service, infrastructure tooling, or deployment pipeline was added. No open-source license has been selected.

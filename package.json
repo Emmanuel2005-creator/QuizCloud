@@ -8,9 +8,12 @@
   },
   "scripts": {
     "start": "node server.js",
-    "check": "node --check dist/app.js && node --check dist/game.js && node --check dist/questions.js && node --check server.js && node --check tests/game.test.js && node --check tests/browser.cjs",
+    "check": "node --check dist/app.js && node --check dist/game.js && node --check dist/questions.js && node --check dist/leaderboard.js && node --check server.js && node --check tests/game.test.js && node --check tests/browser.cjs && node --check tests/leaderboard.cjs && node --check tests/live.cjs",
     "test": "node --test tests/game.test.js",
-    "test:browser": "node tests/browser.cjs"
+    "test:browser": "node tests/browser.cjs && node tests/leaderboard.cjs",
+    "test:leaderboard": "node tests/leaderboard.cjs",
+    "test:backend": "python -m unittest discover -s tests -p test_backend.py -v",
+    "test:live": "node tests/live.cjs"
   },
   "devDependencies": {
     "playwright": "1.62.1"
