@@ -1,50 +1,38 @@
-# Verification record
+# Verification — November 11, 2026
 
-## Leaderboard integration — November 11, 2026
+Finalization was tested with Node.js 24.22.1, Python 3.12.14, Playwright 1.62.1, and installed Google Chrome. No production score submissions or AWS configuration changes were made.
 
-- Source: fetched `Emmanuel2005-creator/QuizCloud`; feature branch starts at the unchanged `main` commit `461a018`.
-- `npm run check`: all **8** JavaScript source/test syntax checks passed.
-- `node --test tests/game.test.js`: **11 passed, 0 failed, 0 skipped**; reported duration 218.8177 ms.
-- `npm run test:browser`: the original **5** reported game regression groups passed, followed by **9 leaderboard checks passed, 0 failed**. All **26** leaderboard-suite API requests were intercepted. No live scores were submitted.
-- Leaderboard coverage: explicit opt-in, exact payload, browser ID/nickname persistence, successful-repeat prevention, equal/higher-best response, all categories, empty/top-ten states, literal rendering of hostile nickname text, stale category cancellation, HTTP/offline/malformed-response recovery, GET/POST timeouts, nickname validation, explicit retry, stale POST/replay isolation, unavailable storage, and locale-formatted perfect scores.
-- UI: no horizontal overflow on the leaderboard at 320/390 pixels or the results form at 390 pixels. Keyboard open/close focus checks passed. Visually inspected desktop submission and mobile leaderboard/results screenshots in ignored `artifacts/`.
-- No uncaught JavaScript exceptions in the regression/leaderboard suites. Expected simulated network/HTTP failures were handled in the UI. No console/runtime errors occurred in the original regression suite.
-- Live read-only Movies GET: HTTP **200**, `success: true`, a leaderboard array, and numeric scores. POST preflight: HTTP **204**. The API supplied no CORS allow-origin permission for localhost; Chrome confirmed an expected CORS console diagnostic and a recoverable UI message, with **0 uncaught JavaScript exceptions**.
-- API GET and preflight header checks for the CloudFront origin named in the ZIP README also supplied no CORS allow-origin permission. The intended origin/headers need owner attention before live integration. No deployed site was modified or tested.
-- Actual live POST acceptance/persistence was deliberately not tested, so no fabricated public score was created. Backend authentication, throttling, moderation, score verification, and idempotency were not audited. See `docs/LEADERBOARD_BETA.md`.
-- The quiz engine, countdown logic, categories, question bank, scoring, and local personal-best storage are unchanged. `app.js` adds only two round-notification events. No production dependency was added.
-- ZIP deployment helpers were not executed. No AWS configuration changes, cloud provisioning, or S3 deployment were performed.
+## Automated local checks
 
-## Original local verification — October 16, 2026
+| Check actually run | Result | Boundary |
+| --- | --- | --- |
+| `npm run check` | All 9 JavaScript syntax checks passed | Source/test parsing, not a build or deployment |
+| `npm test` | 11 passed, 0 failed, 0 skipped | Game rules, randomization, timing, scoring, and local bests |
+| `npm run test:browser` | Original 5 reported game groups and 9 leaderboard checks passed | Leaderboard suite intercepted all 26 API requests; no AWS writes |
+| `python -m unittest discover -s tests -p test_backend.py -v` | 16 passed | Python 3.12; supplied handler with SDK/table doubles, no DynamoDB access |
+| `node tests/live.cjs` | Passed | Real CloudFront site/API GET, all API writes blocked |
 
-Rechecked for GitHub preparation using Node.js 24.19.0 and headless Google Chrome via the project's locked Playwright 1.62.1 development dependency.
+Gameplay tests cover all four categories, ten unique questions per round, shuffled correct-answer mapping, deadlines/timeouts, answer locking, score/accuracy, review, replay, and best scores surviving reload without decreasing.
 
-## GitHub preparation recheck
+Mocked leaderboard tests cover explicit opt-in, payload fields, nickname/ID persistence, successful-repeat prevention, all categories, empty/top-ten states, safe hostile-text rendering, stale requests, HTTP/offline/invalid-response recovery, GET/POST timeout, retry, replay isolation, blocked storage, localized scores, keyboard focus, and small layouts. No uncaught JavaScript errors occurred; deliberate mock network failures were handled by the UI.
 
-- Clean lockfile installation: `npm ci --ignore-scripts --no-audit --no-fund` succeeded; 3 development packages installed, including platform-specific package handling. No production dependencies were added.
-- `npm run check`: all six JavaScript source/test syntax checks passed.
-- `npm test`: **11 tests passed, 0 failed, 0 skipped**; reported duration 142.5085 ms.
-- `npm run test:browser`: all five reported browser check groups passed (full rounds/scoring/persistence, keyboard/responsive layout, unavailable/corrupt storage, direct-file play, and clean console/runtime checks). The first group includes timeout, replay, and answer review.
-- Publication preflight: exact **16-file** staged allowlist matched; **41** representative dependency, temporary, credential, and infrastructure-state paths were correctly ignored.
-- Staged-text checks found no AWS access-key signatures, GitHub tokens, private-key blocks, credential assignments, credential-bearing URLs, or machine-specific user paths. Pattern scanning is not a universal guarantee.
-- `git diff --cached --check`: passed.
-- GitHub CLI active account and the effective repository-local Git HTTPS credential were both verified through the authenticated GitHub API as `Emmanuel2005-creator`. Credentials were not printed or saved in the project.
-- An exact GitHub repository lookup and paginated owned-repository listing found no existing `Emmanuel2005-creator/QuizCloud`. There is no local GitHub remote yet.
-- Work was confined to the existing QuizCloud folder. Its local repository isolates this project from the parent repository. No remote repository creation, public visibility change, code push, or AWS deployment occurred.
+Backend tests cover all categories/boundary scores, missing and invalid input, non-object JSON, trimmed nicknames, composite keys, atomic higher-best conditions, equal/higher existing scores, unknown routes, propagated SDK errors, and the current single-page Scan limitation. These test the supplied source and do not prove its identity with the deployed package.
 
-## Functional coverage and original visual review
+## Actual AWS/public-site checks
 
-- JavaScript syntax checks: `dist/app.js`, `dist/game.js`, and `dist/questions.js` passed.
-- Node built-in tests: **11 passed, 0 failed**. Covered 80 question records, 200 seeded random rounds, shuffled correct-answer mapping, single-submit scoring, exact-deadline expiration, background-time expiration, full-round completion, and storage validation/fallback.
-- Local HTTP preview: returned **200 OK**.
-- Browser: completed rounds in every category; checked perfect, partial, and zero scores, a real timer expiration using Playwright’s controlled clock, locked choices, progress, accuracy, answer review, replay reset, category navigation, and best scores surviving reload without decreasing.
-- Browser storage: checked unavailable storage and malformed saved JSON; both allowed complete games.
-- Keyboard: started a game and submitted an answer using Enter; verified focus on questions and the next action.
-- Responsive layout: no horizontal overflow on home and quiz views at 320, 390, and 768 pixels; completed and checked results at 390 pixels.
-- Direct file: opened `dist/index.html` using `file:` and completed a game successfully.
-- No console/runtime errors in the primary Chrome test session.
-- Visually inspected generated desktop-home, phone-quiz, and phone-results screenshots. Screenshots are available in `artifacts/`.
+- All seven CloudFront frontend files returned HTTP 200 and matched `dist/` after CRLF-to-LF normalization: `index.html`, `styles.css`, `questions.js`, `game.js`, `app.js`, `leaderboard.js`, and `leaderboard.css`.
+- Real Chrome ranking reads passed for Sports, Technology, Geography, and Movies on the CloudFront origin. Empty categories rendered correctly.
+- Four complete live-site quiz rounds passed, including a countdown expiration, correct/incorrect scoring, results/review, replay, and persistent browser-local bests. These rounds created no production records.
+- Desktop (1280px) and phone (390px) layout checks passed. Local suites also checked 320/390/768px layouts. Desktop leaderboard and mobile results screenshots were visually inspected.
+- No JavaScript or console errors occurred in the live-site test. No API write was attempted.
+- Read-only API GETs returned HTTP 200 in all four categories. POST OPTIONS returned 204 and allowed the CloudFront origin, GET/POST, and `content-type`. This supersedes the earlier missing-CORS observation; no change was made by this task.
+- A separate current localhost-origin check confirmed CORS blocks that origin. The UI recovered with an error message and zero uncaught JavaScript exceptions.
+- No frontend upload or CloudFront invalidation is needed for the current unchanged assets. Details: [deployment notes](docs/DEPLOYMENT.md). Ignored local screenshots/report: `artifacts/`.
 
-The network sandbox initially prevented localhost communication. The preview server and headless checks succeeded after running outside that network sandbox. This is a development-environment constraint, not an application dependency.
+## Source and security review
 
-Only Chrome was tested automatically. Safari, Firefox, and physical mobile devices were not tested. This was functional/layout verification, not a formal accessibility audit. The game makes no remote API calls. GitHub and npm were accessed for publication preparation and dependency verification. No AWS deployment, GitHub push, or cloud resource creation occurred.
+The owner supplied the Lambda console Python. `backend/lambda_function.py` preserves it without refactoring; the recorded source hash is in [backend/README.md](backend/README.md). The AWS CLI had no usable credentials, so an independent deployed-source comparison and IAM/private-resource audit were not possible. No secrets, access keys, or private account identifiers were added.
+
+Frontend rendering and validation, request lifecycle, failure handling, local best isolation, and the supplied handler's input/conditional-write behavior were reviewed. Effective IAM, bucket privacy, API authorization/rate limits, and live POST persistence remain unverified. Scores/IDs are forgeable, the scan is limited to one page, and unexpected database errors propagate. See [security limitations](docs/LEADERBOARD_BETA.md).
+
+No Safari, Firefox, physical-device, formal accessibility, performance, load/abuse, or production POST test was performed. No AWS resources were created, modified, redeployed, or invalidated.

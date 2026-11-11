@@ -1,44 +1,41 @@
-# Leaderboard beta integration
+# Leaderboard beta: security and reliability
 
-Integrated from the two connector assets in `QuizCloud_Leaderboard_Upgrade.zip`. The archive's preparation script and deployment instructions were not executed. No AWS configuration or S3 deployment is part of this feature branch.
+The frontend reads rankings from `https://xdtbodt7p2.execute-api.us-east-1.amazonaws.com` and submits a completed round only after an explicit nickname/form action. This is a public beta, not a verified competition.
 
-## Contract
+## API contract
 
-Base URL: `https://xdtbodt7p2.execute-api.us-east-1.amazonaws.com`
-
-| Operation | Request | Expected JSON response |
+| Route | Request | Successful response |
 | --- | --- | --- |
-| Rankings | `GET /leaderboard?category=movies` | `{ "success": true, "leaderboard": [{ "name": "Player", "score": 800 }] }` |
-| Submit | `POST /scores` with JSON `{ playerId, name, category, score }` | `{ "success": true, "saved": true }`, or `saved: false` for an existing equal/higher best |
+| `GET /leaderboard?category=movies` | Category: `sports`, `technology`, `geography`, or `movies` | `{ "success": true, "leaderboard": [{ "name": "Player", "score": 800 }] }` |
+| `POST /scores` | JSON `{ playerId, name, category, score }` | `{ "success": true, "saved": true, "score": 800 }`, or `saved: false` for an equal/higher stored best |
 
-Categories: `sports`, `technology`, `geography`, `movies`. Nicknames contain 1–24 characters after trimming, without control characters. Scores are integer multiples of 100 from 0 through 1,000. The client filters malformed ranking rows and renders at most ten valid entries in API-provided order. Successful submissions require a boolean `saved` field. These are the connector's expected rules, not an audit of the backend implementation.
+The frontend accepts 1–24-character trimmed nicknames without control characters and integer scores in 100-point steps from 0 to 1,000. It checks response shapes, ignores invalid ranking rows, and renders up to ten valid rows using `textContent`, not HTML.
 
-Core gameplay is preserved. `game.js`, the question bank, quiz timer, and personal-best storage are unchanged. `app.js` emits new-round and completed-round events; `leaderboard.js` captures the numeric category/score pair. This also handles localized displays such as `1.000` points. Ranking requests supersede stale category requests, and late POST responses cannot overwrite a newer round's status.
+The supplied Lambda validates player ID length (8–64), trimmed nickname length (1–24), category, and integer score/step. It rejects boolean/float/string scores. Its conditional DynamoDB update replaces only a lower score. That rule was tested with table doubles; it does not establish honest gameplay or live persistence.
 
-## Privacy and request behavior
+## Implemented client behavior
 
-- No leaderboard request is made on page load or merely by completing a round. Rankings require opening/refreshing the board; submission requires a deliberate form action.
-- A nickname, score, category, and browser-generated player ID are sent on submission. Nicknames and scores are public. The form explains this before submission.
-- `quizcloud.nickname.v1` stores the last successfully submitted nickname; `quizcloud.player-id.v1` stores the browser ID on the first attempted submission. Clearing browser data creates a new identity. Blocked storage falls back to the current tab.
-- The client sends no cookies or authorization credentials, follows no redirects, and omits the referrer. The service can still observe normal connection metadata such as IP address. No cloud secret is embedded.
-- Requests time out after eight seconds. The UI blocks overlapping/successfully repeated submissions for the current round. It offers explicit retry after failures, warning that the server may already have received the score. This is not server-side idempotency.
+- No automatic network request on page load or round completion. Opening/refreshing the board requests rankings; submitting the form sends a score.
+- The form discloses that nicknames/scores are public and sends a browser ID, nickname, category, and score. Avoid personal information.
+- A browser ID and last successfully submitted nickname are stored separately from local personal bests; unavailable storage falls back to the current tab.
+- Requests omit cookies/referrer, reject redirects, and time out after eight seconds. The API URL is public configuration, not a secret.
+- A newer category request cancels/supersedes stale results. Old POST responses cannot overwrite a new round's UI.
+- Successful repeated submissions are disabled for that round. Failed requests offer an explicit retry with an ambiguity warning; the service may already have accepted the score. No automatic POST retry occurs.
+- Network/HTTP/malformed-response errors show recoverable feedback without interrupting the core quiz.
 
-## Security limitations requiring backend attention
+## Unresolved limitations
 
-1. **Scores are forgeable.** Anyone can alter JavaScript, dispatch a fake round event, edit browser state, or call the API directly. Local numeric validation and UI buttons cannot establish that a quiz was played honestly. Server-issued game sessions, authoritative answer checking, and replay protection are needed before treating scores as competitive results.
-2. **Browser IDs are not authentication.** They can be copied, replaced, or discarded. A nickname is not a verified account; impersonation and duplicate identities remain possible. Review server authorization before allowing identity-bound writes.
-3. **Server validation is essential.** Enforce the schema, allowed categories, length/range limits, and request size on the server independently. Rendered API values are handled with `textContent`, not HTML; this protects this UI from nickname markup injection but does not validate other consumers.
-4. **Abuse and costs remain a concern.** Review server-side rate limits, monitoring, quotas, spam/moderation controls, and alarms. No load or abuse testing was performed, and backend throttling settings were not inspected or changed.
-5. **CORS is not authentication or anti-cheat.** Restrict allowed browser origins as appropriate, but non-browser callers are not protected by CORS. Review backend identity and score rules separately.
-6. **Timeouts are ambiguous.** A POST may be saved even if the browser cannot read its response. A backend idempotency scheme and a per-category conditional best-score update would make retries safer; their implementation was not verified.
+1. **Client-controlled scores and identities:** a caller can forge scores, dispatch fake round events, replace browser IDs, or call the endpoint directly. There is no proof of quiz completion in the supplied handler, and browser IDs are not authentication. Nicknames are not verified accounts.
+2. **Scans and ranking completeness:** the supplied handler reads one filtered Scan page and does not follow `LastEvaluatedKey`. Larger tables can produce incomplete rankings and inefficient reads. This behavior is preserved in the backup, not silently rewritten.
+3. **Server validation and moderation:** validate independently of the frontend. The supplied handler has no control-character/moderation checks, explicit application request-size limit, or replay/session verification. No abuse or load testing was performed.
+4. **Unknown effective AWS controls:** IAM role/trust policies, API authorizers, rate limits, logging, bucket access controls, and table settings were not inspected without usable AWS credentials. The source needs `dynamodb:Scan` and `dynamodb:UpdateItem` scoped to the intended table; actual least privilege is unverified. No configuration changes were made.
+5. **POST ambiguity and failure handling:** conditional best updates protect against lower scores, but are not an authenticated idempotency scheme. Unexpected SDK errors propagate from the handler. Live POST acceptance/persistence has not been tested; a timeout may follow a write.
+6. **CORS is a browser boundary:** it does not authenticate callers or prevent direct API abuse. The final live review confirmed permission for the CloudFront origin; localhost can remain blocked. Do not bypass browser security with `no-cors` or disabled protections.
 
-These limitations follow [OWASP guidance on bypassable client-side validation](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html). Origin behavior follows [API Gateway HTTP API CORS guidance](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-cors.html).
+Client validation is bypassable; see [OWASP input-validation guidance](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html). [API Gateway CORS documentation](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-cors.html) describes origin/preflight behavior.
 
-## Verification and remaining live checks
+## What was verified
 
-- On November 11, 2026, a read-only Movies request returned HTTP 200 with the expected `{ success, leaderboard }` structure and a numeric score.
-- A local-origin GET and POST preflight returned no `Access-Control-Allow-Origin` permission for `http://127.0.0.1:8000`. A real Chrome request confirmed that CORS blocks the local UI's live read. No resource changes were made to fix this.
-- Read-only GET/header and POST-preflight checks with the CloudFront origin named in the ZIP README (`https://d17wyxi8cpi412.cloudfront.net`) also returned no `Access-Control-Allow-Origin` header. This checks API response headers only, not a deployed site. Confirm the intended live origin with the API owner before deploying the connector.
-- The deterministic browser suite intercepts all leaderboard requests and exercises success, failure, timeout, malformed payloads, stale requests, duplicate clicks, nickname injection, locale handling, blocked storage, keyboard focus, and small layouts.
-- No live POST was sent. Backend acceptance, persistence, best-score concurrency, and live POST response CORS remain to be verified from an allowed origin using an explicitly chosen test record.
-- Before a live integration review, confirm allowed origins and JSON preflight/response headers with the API owner. Do not use `no-cors` or disable browser protections. Any AWS changes or S3 deployment require a separate task.
+The mocked browser suite exercises opt-in, payload structure, duplicate prevention, invalid/empty responses, markup injection, stale requests, timeouts, storage failures, localized score display, and mobile/keyboard behavior. Python tests exercise the supplied Lambda against SDK/table doubles.
+
+Separate real-origin Chrome checks read rankings in all four categories, complete quiz rounds, verify local bests/replay, and check layouts/errors. Live GET/preflight permissions for CloudFront now work; earlier observations of missing headers are superseded. No production POST was sent and no AWS configuration was changed. See [CHECKS.md](../CHECKS.md) for actual results and [backend provenance](../backend/README.md) for the unverified deployment comparison.
