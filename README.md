@@ -1,6 +1,6 @@
 # QuizCloud
 
-A responsive trivia game and cloud engineering portfolio project built with HTML, CSS, and vanilla JavaScript. The application is complete and tested locally. AWS hosting is planned; this version provisions no cloud resources.
+A responsive trivia game and cloud engineering portfolio project built with HTML, CSS, and vanilla JavaScript. The core game runs locally, with an optional public-beta leaderboard connected to an existing API. This repository provisions no cloud resources.
 
 ## Features
 
@@ -12,7 +12,8 @@ A responsive trivia game and cloud engineering portfolio project built with HTML
 - Results, accuracy, answer review, Play Again, and category navigation.
 - Per-category personal bests saved with localStorage and an in-memory fallback when storage is blocked.
 - Responsive layouts, keyboard support, visible focus, live feedback, and reduced-motion styles.
-- Offline gameplay with no account, API key, backend, remote fonts, or production dependencies.
+- Offline core gameplay with no account, API key, remote fonts, or production dependencies.
+- Optional category rankings and explicit public score submission through an existing AWS API; no automatic submission.
 
 ## Run locally
 
@@ -48,6 +49,18 @@ Use the same browser and address each time. Scores are scoped to the origin: `lo
 
 The logo and **Back to categories** leave an unfinished round. Refreshing resets the current session; incomplete rounds do not save a new best.
 
+## Public-beta leaderboard
+
+Use **View rankings** on the homepage to load up to ten scores; switch categories or select Refresh to reload. After a completed round, optionally enter a public nickname and select **Submit score**. The browser sends `{ playerId, name, category, score }` only after that action. Nicknames and scores are public: avoid personal information. A browser player ID and last successfully submitted nickname are saved locally when storage permits; they are separate from personal bests.
+
+The connector uses `https://xdtbodt7p2.execute-api.us-east-1.amazonaws.com`: `GET /leaderboard?category=movies` (or another category) and `POST /scores`. It expects `{ success: true, leaderboard: [{ name, score }] }` for rankings and `{ success: true, saved: true|false }` for submissions. The API URL is public configuration, not a secret.
+
+Rankings are fetched only when requested. Failed requests show a recoverable message; the quiz and local bests continue working. A completed round can be submitted once successfully through the UI. If a request times out or fails, check rankings before manually retrying: the server may already have accepted it. There is no automatic POST retry.
+
+**Local-origin limitation:** the API did not return CORS permission for `http://127.0.0.1:8000` during verification, and Chrome blocked live ranking reads from that origin. Browser tests intercept API requests and do not require production CORS changes. For a real local integration test, the API owner must separately allow the exact local origin, GET/POST, and the JSON `content-type` header. Do not disable browser security or use `no-cors`, which would hide responses. Direct-file origins may also be blocked.
+
+Scores, nicknames, and player IDs are untrusted client input. This is not a cheat-proof or authenticated leaderboard. See [the beta contract, verification notes, and security limitations](docs/LEADERBOARD_BETA.md) before a public release.
+
 ## Automated tests
 
 Run syntax checks and Node built-in unit tests without installing packages:
@@ -73,6 +86,8 @@ npm run test:browser
 
 The suite uses Playwright with the installed Chrome channel; no separate Playwright browser download is required. It uses isolated contexts rather than a personal Chrome profile. Screenshots are generated in `artifacts/`, which is excluded from Git. `QUIZCLOUD_URL` can override the preview address.
 
+`npm run test:browser` runs the original game regression suite followed by the leaderboard UI suite. Run just the latter with `npm run test:leaderboard`. All leaderboard-suite API traffic is intercepted, including POSTs: tests do not publish fabricated scores or require credentials. Live API reachability/CORS checks are recorded separately from these deterministic tests.
+
 Unit tests cover question data, seeded randomization, answer mapping, scoring, deadlines, background expiration, round completion, and storage validation/fallback. Browser tests cover complete games, timeouts, saved bests, replay, review, keyboard focus, mobile overflow, corrupt/blocked storage, and direct-file opening. See [CHECKS.md](CHECKS.md) for actual results and limitations.
 
 ## Architecture
@@ -85,19 +100,23 @@ QuizCloud/
     questions.js            80 questions and category metadata
     game.js                 Randomization, game state, timing, personal bests
     app.js                  DOM rendering, navigation, timer events, feedback
+    leaderboard.js          Opt-in beta API connector; isolated request/round state
+    leaderboard.css         Leaderboard and submission form styles
   tests/
     game.test.js            Node built-in unit tests
     browser.cjs             Playwright/Chrome interaction and layout checks
+    leaderboard.cjs         Isolated leaderboard UI, safety, and failure checks
   docs/
     AWS_PLAN.md             Future deployment design; no deployed resources
     GITHUB_PREPARATION.md    Proposed publication manifest and approval boundary
+    LEADERBOARD_BETA.md      API contract, security limits, and integration checks
   server.js                 Optional localhost preview server
   package.json              Commands and development-only Playwright dependency
   package-lock.json         Reproducible development dependency versions
   CHECKS.md                 Recorded verification
 ```
 
-The UI follows home -> question -> feedback -> results. The engine owns scoring and locks submitted answers. A wall-clock deadline handles delayed callbacks and background tabs. Fisher-Yates shuffling samples without replacement and randomizes choices. The versioned `quizcloud.personal-bests.v1` localStorage key stores validated scores per category. Scores are browser-local and user-editable; this is not a trusted competitive leaderboard.
+The UI follows home -> question -> feedback -> results. The engine owns scoring and locks submitted answers. A wall-clock deadline handles delayed callbacks and background tabs. Fisher-Yates shuffling samples without replacement and randomizes choices. The versioned `quizcloud.personal-bests.v1` localStorage key stores validated local scores per category. Two small DOM events from `app.js` notify the optional connector of a new/completed round; it does not parse locale-formatted score text. Those events provide no proof to the server that a score is legitimate.
 
 `dist/` contains original source despite its name: include it in Git. Its contents are the only files needed for future static hosting. The preview server, tests, dependency files, and documentation do not belong in the hosting bucket.
 

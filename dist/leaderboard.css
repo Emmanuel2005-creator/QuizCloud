@@ -1,0 +1,32 @@
+/* QuizCloud global leaderboard extension. Styled to match the existing theme. */
+.cloud-promo,.cloud-board,.cloud-submit{font-family:inherit;box-sizing:border-box}
+.cloud-promo{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:23px 26px;margin:30px 0 0;border-radius:17px;border:1px solid #e5e3f5;background:linear-gradient(110deg,#f8f7ff,#fff)}
+.cloud-promo h3{font-size:22px;line-height:1.3;margin:6px 0;color:#24263c}
+.cloud-promo p,.cloud-board p,.cloud-submit p{font-size:13px;color:#73778d;line-height:1.7;margin:4px 0 0}
+.cloud-eyebrow{font-size:10px;font-weight:750;letter-spacing:1.4px;color:#665bdd}
+.cloud-button{border:0;background:#5750dc;color:#fff;border-radius:10px;padding:12px 16px;font-weight:650;font-size:13px;cursor:pointer;white-space:nowrap}
+.cloud-button:hover{background:#4840c6}.cloud-button:disabled{opacity:.55;cursor:wait}
+.cloud-link{background:transparent;border:0;color:#5750dc;font-size:13px;font-weight:650;cursor:pointer;padding:9px 2px}
+.cloud-board{background:#fff;border:1px solid #e4e6ef;border-radius:18px;padding:26px;margin:22px 0 15px}
+.cloud-board-header{display:flex;justify-content:space-between;align-items:flex-start;gap:18px}
+.cloud-board h2{font-size:28px;letter-spacing:-.7px;margin:8px 0;color:#25273b}
+.cloud-board-controls{display:flex;align-items:center;gap:13px;margin:20px 0 5px;flex-wrap:wrap}
+.cloud-board-controls label,.cloud-submit label{font-size:12px;font-weight:700;color:#555a70}
+.cloud-board select,.cloud-submit input{min-height:43px;background:#fff;border:1px solid #dfe1ec;border-radius:10px;padding:10px 12px;font-family:inherit;font-size:13px;color:#33354d}
+.cloud-board select{min-width:170px}.cloud-submit input{min-width:0;flex:1;width:100%}
+.cloud-status{min-height:24px;font-size:12px!important;color:#666a80!important;margin:10px 0!important}
+.cloud-rankings{padding:0;margin:10px 0;list-style:none}
+.cloud-rank,.cloud-empty{padding:15px 14px;border-bottom:1px solid #f0f0f5;font-size:14px;display:flex;align-items:center;gap:18px}
+.cloud-rank strong{color:#6a60db;min-width:34px}.cloud-rank span{flex:1;text-align:left;overflow-wrap:anywhere}.cloud-rank b{color:#333550;font-variant-numeric:tabular-nums}
+.cloud-rank:first-child{background:#f8f6ff;border-radius:10px}.cloud-empty{color:#9699aa;justify-content:center}
+.cloud-footnote{font-size:11px!important;margin-top:12px!important}
+.cloud-submit{width:100%;text-align:left;padding:20px 21px;margin:0 0 18px;background:#f9f8ff;border:1px solid #e9e6fb;border-radius:14px}
+.cloud-submit-title{font-weight:750;font-size:16px;color:#24263d}
+.cloud-submit>p:first-of-type{margin:5px 0 15px}
+.cloud-submit-controls{display:flex;gap:10px;margin-top:7px}
+.cloud-submit .cloud-link{display:block;margin:1px 0 0}
+.cloud-submit-status{margin:12px 0 0}
+.cloud-board select:focus-visible,.cloud-submit input:focus-visible{outline:3px solid #8f85f3;outline-offset:3px}
+.cloud-rank span{min-width:0}.cloud-rank b{white-space:nowrap}
+.cloud-board[aria-busy="true"]{cursor:progress}
+@media(max-width:560px){.cloud-promo{display:block;padding:20px}.cloud-promo .cloud-button{margin-top:15px;width:100%}.cloud-board{padding:20px}.cloud-board h2{font-size:24px}.cloud-board-controls{gap:9px}.cloud-board select{min-width:135px;flex:1}.cloud-submit{padding:17px}.cloud-submit-controls{flex-direction:column}.cloud-submit .cloud-button{width:100%}.cloud-rank{gap:9px;font-size:12px}}

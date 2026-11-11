@@ -1,4 +1,21 @@
-# Local verification — October 16, 2026
+# Verification record
+
+## Leaderboard integration — November 11, 2026
+
+- Source: fetched `Emmanuel2005-creator/QuizCloud`; feature branch starts at the unchanged `main` commit `461a018`.
+- `npm run check`: all **8** JavaScript source/test syntax checks passed.
+- `node --test tests/game.test.js`: **11 passed, 0 failed, 0 skipped**; reported duration 218.8177 ms.
+- `npm run test:browser`: the original **5** reported game regression groups passed, followed by **9 leaderboard checks passed, 0 failed**. All **26** leaderboard-suite API requests were intercepted. No live scores were submitted.
+- Leaderboard coverage: explicit opt-in, exact payload, browser ID/nickname persistence, successful-repeat prevention, equal/higher-best response, all categories, empty/top-ten states, literal rendering of hostile nickname text, stale category cancellation, HTTP/offline/malformed-response recovery, GET/POST timeouts, nickname validation, explicit retry, stale POST/replay isolation, unavailable storage, and locale-formatted perfect scores.
+- UI: no horizontal overflow on the leaderboard at 320/390 pixels or the results form at 390 pixels. Keyboard open/close focus checks passed. Visually inspected desktop submission and mobile leaderboard/results screenshots in ignored `artifacts/`.
+- No uncaught JavaScript exceptions in the regression/leaderboard suites. Expected simulated network/HTTP failures were handled in the UI. No console/runtime errors occurred in the original regression suite.
+- Live read-only Movies GET: HTTP **200**, `success: true`, a leaderboard array, and numeric scores. POST preflight: HTTP **204**. The API supplied no CORS allow-origin permission for localhost; Chrome confirmed an expected CORS console diagnostic and a recoverable UI message, with **0 uncaught JavaScript exceptions**.
+- API GET and preflight header checks for the CloudFront origin named in the ZIP README also supplied no CORS allow-origin permission. The intended origin/headers need owner attention before live integration. No deployed site was modified or tested.
+- Actual live POST acceptance/persistence was deliberately not tested, so no fabricated public score was created. Backend authentication, throttling, moderation, score verification, and idempotency were not audited. See `docs/LEADERBOARD_BETA.md`.
+- The quiz engine, countdown logic, categories, question bank, scoring, and local personal-best storage are unchanged. `app.js` adds only two round-notification events. No production dependency was added.
+- ZIP deployment helpers were not executed. No AWS configuration changes, cloud provisioning, or S3 deployment were performed.
+
+## Original local verification — October 16, 2026
 
 Rechecked for GitHub preparation using Node.js 24.19.0 and headless Google Chrome via the project's locked Playwright 1.62.1 development dependency.
 

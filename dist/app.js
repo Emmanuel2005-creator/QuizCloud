@@ -49,6 +49,7 @@
     $('session-best').textContent = formatScore(bests.get(item.id));
     show('quiz');
     renderQuestion();
+    document.dispatchEvent(new CustomEvent('quizcloud:round-start', { detail: { category: item.id } }));
   }
   function updateScore() {
     $('current-score').textContent = formatScore(game.score);
@@ -148,6 +149,7 @@
     }
     show('results');
     $('result-title').focus({ preventScroll: true });
+    document.dispatchEvent(new CustomEvent('quizcloud:round-complete', { detail: { category: category.id, score: game.score } }));
   }
   $('next-question').addEventListener('click', () => {
     if (!game || !game.answered) return;
